@@ -6,9 +6,7 @@ Code of the Median-of-Means Kernel Density Estimator (MoM-KDE) used in "Robust K
 
 The reposity contains:
 
-1) The code for MoM-KDE, RKDE [1], and SPKDE [2]
-
-The reposity 'data' contains all nescessary file to visualize the EEG.
+1) The code for MoM-KDE, RKDE [1], and SPKDE [2].
 
 ## Requirements
 
