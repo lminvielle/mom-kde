@@ -14,4 +14,5 @@ Python 3.6
 
 ## References
 [1] J. Kim and C. D. Scott.   Robust kernel density estimation.Journal of Machine Learning Research, 13(Sep):2529–2565, 2012.
+
 [2] R. A. Vandermeulen and C. Scott. Robust kernel density estimation by scaling and projection in hilbert space. In Advances       in Neural Information Processing Systems, pages 433–441, 2014.
