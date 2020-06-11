@@ -1,8 +1,7 @@
-import time
 import numpy as np
 from sklearn.neighbors import KernelDensity
 from scipy.spatial.distance import euclidean
-from sklearn.metrics.pairwise import rbf_kernel, euclidean_distances
+from sklearn.metrics.pairwise import rbf_kernel
 from cvxopt import matrix, solvers
 from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
 
@@ -134,6 +133,7 @@ def area_MC_mom(X, model_momkde, n_mc=100000, distribution='kde', h=1):
 
     Returns
     -----
+    area : the area of model_momkde over X
     """
     cube_lows = []
     cube_highs = []
@@ -179,7 +179,6 @@ def mom_kde(X_data,
     (if return_model=True) KDE_K: the list of all kdes fitted on the blocks.
         Warning : the KDE_K is not normed to area=1, only z is normed.
     """
-    # t0 = time.time()
     n_samples = X_data.shape[0]
     if K == 'auto':
         K = int(2 * n_samples * outliers_fraction) + 1
@@ -207,15 +206,13 @@ def mom_kde(X_data,
         z = min(map(lambda p1: (p1, sum(map(lambda p2: distance(p1, p2), z))), z), key=lambda x: x[1])[0]
     else:
         raise ValueError('Wrong value for argument median: ' + median)
-    # t1 = time.time() - t0
-    # print("time fit MOM-KDE : ", (str(np.round(t1, 2)) + 's'))
     if norm:
         if grid is None:
             print('no grid specified, computing area with MC')
             area = area_MC_mom(X_data, KDE_K)
         else:
             area = area_density(z, grid)
-        print("area mom (before normalization) :{}".format(area))
+        # print("area mom (before normalization) :{}".format(area))
         z = z / area
     if return_model:
         return z, KDE_K
@@ -224,7 +221,6 @@ def mom_kde(X_data,
 
 
 def rkde(X_data, X_plot, h, type_rho='hampel', return_model=False):
-    t0 = time.time()
     # kernel matrix
     n_samples, d = X_data.shape
     gamma = 1. / (2 * (h**2))
@@ -245,8 +241,6 @@ def rkde(X_data, X_plot, h, type_rho='hampel', return_model=False):
     K_plot = rbf_kernel(X_plot, X_data, gamma=gamma) * (2 * np.pi * h**2)**(-d / 2.)
     # final density
     z = np.dot(K_plot, w)
-    t1 = time.time() - t0
-    print("time fit RKDE : ", (str(np.round(t1, 2)) + 's'))
     if return_model:
         return z, w
     else:
@@ -254,7 +248,6 @@ def rkde(X_data, X_plot, h, type_rho='hampel', return_model=False):
 
 
 def spkde(X_data, X_plot, h, outliers_fraction, return_model=False):
-    t0 = time.time()
     d = X_data.shape[1]
     beta = 1. / (1 - outliers_fraction)
     gamma = 1. / (2 * (h**2))
@@ -268,8 +261,6 @@ def spkde(X_data, X_plot, h, outliers_fraction, return_model=False):
     b = matrix(1.0)
     sol = solvers.qp(P, q, G, h_solver, A, b)
     a = np.array(sol['x']).reshape((-1, ))
-    t1 = time.time() - t0
-    print("time fit SPKDE : ", (str(np.round(t1, 2)) + 's'))
     # final density
     GG = rbf_kernel(X_data, X_plot, gamma=gamma) * (2 * np.pi * h**2)**(-d / 2.)
     z = np.zeros((X_plot.shape[0]))
@@ -280,86 +271,6 @@ def spkde(X_data, X_plot, h, outliers_fraction, return_model=False):
         return z, a
     else:
         return z
-
-
-def bandwidth_select(X_data, htype=4):
-    n = X_data.shape[0]
-    d = X_data.shape[1]
-    sigma = np.logspace(-1.5, 0.5, 100)  # grid for method 2 et 3
-
-    if htype == 1:
-        h = .25
-        return h
-    elif htype == 2:
-        # least square cross validation
-        losses = []
-        distance = euclidean_distances(X_data)
-        # distance[distance == 0] = np.inf
-        Jmin = np.inf
-        for i in range(len(sigma)):
-            h_temp = sigma[i]
-            K1 = (4 * np.pi * h_temp**2)**(-d / 2) * np.exp(-distance / (4 * h_temp**2))
-            K2 = (2 * np.pi * h_temp**2)**(-d / 2) * (np.exp(-distance / (2 * h_temp**2)) - np.identity(n))
-            J = np.sum(K1) / (n**2) - 2 / (n * (n - 1)) * np.sum(K2)
-            # print(J)
-            losses.append(J)
-            if J < Jmin:
-                h = h_temp.copy()
-                Jmin = J.copy()
-        return h, sigma, losses
-    elif htype == 3:
-        # log-likelihood cross validation
-        losses = []
-        distance = euclidean_distances(X_data)
-        distance[distance == 0] = np.inf
-        Jmax = -np.inf
-        for i in range(len(sigma)):
-            h_temp = sigma[i]
-            d = 2
-            Kk = (2 * np.pi * h_temp**2)**(-d / 2) * (np.exp(-distance / (2 * h_temp**2)) - np.identity(n))
-            J = 1 / n * np.sum(np.log(np.sum(Kk) / (n - 1)))
-            losses.append(J)
-            if J > Jmax:
-                h = h_temp.copy()
-                Jmax = J.copy()
-        return h, sigma, losses
-    elif htype == 4:
-        # Jaakola heuristic
-        distance = euclidean_distances(X_data)
-        distance[distance == 0] = np.inf
-        h = np.median(np.min(distance, axis=1))
-        return h
-    else:
-        raise ValueError('Unknown value for htype: {}'.format(htype))
-
-
-def bandwidth_cv(X_data):
-    n = X_data.shape[0]
-    d = X_data.shape[1]
-    sigma = np.logspace(-1.5, 0.5, 100)  # grid for method 2 et 3
-    losses = []
-    distance = euclidean_distances(X_data)
-    distance_minusi = []
-    for i in range(n):
-        X_minusi = np.delete(X_data, i, axis=0)
-        distance_minusi.append(euclidean_distances(X_minusi))
-    # distance[distance == 0] = np.inf
-    Jmin = np.inf
-    for i in range(len(sigma)):
-        h_temp = sigma[i]
-        K = gaussian_kernel(distance, h_temp, d)
-        K_minusi = []
-        for i in range(n):
-            K_minusi.append(gaussian_kernel(distance_minusi[i], h_temp, d))
-        A = (1 / (n**2)) * np.sum((np.sum(K, axis=0))**2)
-        B = (1 / (n - 1)) * np.sum(K_minusi)
-        J = A - (2 / n) * B
-        print('h_temp: {}, J: {}'.format(h_temp, J))
-        losses.append(J)
-        if J < Jmin:
-            h = h_temp.copy()
-            Jmin = J.copy()
-    return h, sigma, losses
 
 
 def bandwidth_cvgrid(X_data, loo=False, kfold=5):

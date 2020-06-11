@@ -1,37 +1,30 @@
 import os
-import time
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt
 import sklearn.metrics as sk_metrics
 from sklearn.metrics.pairwise import rbf_kernel
 
-import metrics
-import kde_lib
+from . import metrics
+from . import kde_lib
 
 
 class Density_model:
 
-    def __init__(self, name, dataset, outlier_prop, kernel, h, is_hcv):
+    def __init__(self, name, dataset, outlier_prop, kernel, h):
         self.algo = name
         self.kernel = kernel
         self.bandwidth = h
-        self.is_bandwidth_cv = is_hcv
         self.density = None
         self.n_block = None
         self.dataset = dataset
-        # self.epsilon = None
         self.outliers_fraction = outlier_prop
         self.kullback_f0_f = None
         self.kullback_f_f0 = None
         self.jensen = None
-        self.time = None
         self.auc_anomaly = None
         self.X_data = None
 
     def fit(self, X, X_plot, grid, k='auto', norm_mom=True, hstd_mom=False):
-        # self.outliers_fraction = self.epsilon / (1 + self.epsilon)
-        t0 = time.time()
         if self.algo == 'kde':
             self.density, self.model = kde_lib.kde(X,
                                                    X_plot,
@@ -76,8 +69,6 @@ class Density_model:
                                                      return_model=True)
         else:
             raise ValueError('Wrong name of algo')
-        t1 = time.time() - t0
-        self.time = t1
 
     def compute_score(self, true_dens):
         if self.density is None:
@@ -89,10 +80,6 @@ class Density_model:
     def compute_anomaly_roc(self, y, plot_roc=False):
         fpr, tpr, thresholds = sk_metrics.roc_curve(y, self.density)
         self.auc_anomaly = sk_metrics.auc(fpr, tpr)
-        # if plot_roc:
-        # fig, ax = plt.subplots()
-        # ax.plt(fpr, tpr, label='AUC = {:.2f}'.format(self.auc_anomaly))
-        # plt.show()
 
     def estimate_density(self, X):
         model = self.model
@@ -136,29 +123,23 @@ class Density_model:
             self.algo,
             self.dataset,
             self.bandwidth,
-            self.is_bandwidth_cv,
-            # self.epsilon,
             self.outliers_fraction,
             self.n_block,
             self.kullback_f0_f,
             self.kullback_f_f0,
             self.jensen,
             self.auc_anomaly,
-            self.time
         ]])
         header_list = [
             "algo",
             "dataset",
             "bandwidth",
-            "is_bandwidth_cv",
-            # "epsilon",
             "outlier_prop",
             "n_block",
             "kullback_f0_f",
             "kullback_f_f0",
             "jensen",
             "auc_anomaly",
-            "time",
         ]
         write_header = False
         if not os.path.isfile(file_path):
