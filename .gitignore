@@ -7,5 +7,4 @@ __pycache__/
 **/*.swp
 **/*.orig
 **/*.dot
-**/*.png
 **/.~lock*
