@@ -1,6 +1,8 @@
 # Median-of-Means Kernel Density Estimator (MoM-KDE)
 
-Code of the Median-of-Means Kernel Density Estimator (MoM-KDE) used in "Robust Kernel Density Estimation with Median-of-Means principle".
+Code of the Median-of-Means Kernel Density Estimator (MoM-KDE) used in:
+
+[Robust Kernel Density Estimation with Median-of-Means principle.](https://arxiv.org/abs/2006.16590)
 
 ## Container
 
